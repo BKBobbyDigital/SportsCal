@@ -90,21 +90,38 @@ def write_calendar(filename: str, cal_name: str, events: list[dict]) -> None:
 YANKEES_TEAM_ID = 147
 
 def fetch_yankees() -> list[dict]:
+    # MLB's /schedule endpoint caps results around ~200 games per call, so
+    # asking for a 14+ month window in one shot silently drops most of the
+    # current season. Chunk by calendar year to stay well under the cap.
     url = "https://statsapi.mlb.com/api/v1/schedule"
-    params = {
-        "teamId": YANKEES_TEAM_ID,
-        "sportId": 1,
-        "startDate": WINDOW_START.isoformat(),
-        "endDate": WINDOW_END.isoformat(),
-        "hydrate": "venue(location)",
-    }
-    r = requests.get(url, params=params, timeout=30)
-    r.raise_for_status()
-    data = r.json()
+    chunks: list[tuple[dt.date, dt.date]] = []
+    year = WINDOW_START.year
+    while year <= WINDOW_END.year:
+        chunk_start = max(WINDOW_START, dt.date(year, 1, 1))
+        chunk_end = min(WINDOW_END, dt.date(year, 12, 31))
+        chunks.append((chunk_start, chunk_end))
+        year += 1
+
+    raw_days = []
+    for cs, ce in chunks:
+        params = {
+            "teamId": YANKEES_TEAM_ID,
+            "sportId": 1,
+            "startDate": cs.isoformat(),
+            "endDate": ce.isoformat(),
+            "hydrate": "venue(location)",
+        }
+        r = requests.get(url, params=params, timeout=30)
+        r.raise_for_status()
+        raw_days.extend(r.json().get("dates", []))
 
     events = []
-    for day in data.get("dates", []):
+    seen = set()
+    for day in raw_days:
         for game in day.get("games", []):
+            if game["gamePk"] in seen:
+                continue
+            seen.add(game["gamePk"])
             game_pk = game["gamePk"]
             status = game.get("status", {}).get("abstractGameState", "")
             # Skip cancelled; postponed games stay (they'll be rescheduled w/ new gamePk)
