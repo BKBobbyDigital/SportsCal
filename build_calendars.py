@@ -85,11 +85,13 @@ def write_calendar(filename: str, cal_name: str, events: list[dict]) -> None:
     print(f"  wrote {path} ({len(events)} events)")
 
 
-# ----------------------------- Yankees (MLB StatsAPI) -----------------------------
+# ----------------------------- MLB (StatsAPI) -----------------------------
 
+# MLB team IDs from statsapi.mlb.com
 YANKEES_TEAM_ID = 147
+PHILLIES_TEAM_ID = 143
 
-def fetch_yankees() -> list[dict]:
+def fetch_mlb(team_id: int) -> list[dict]:
     # MLB's /schedule endpoint caps results around ~200 games per call, so
     # asking for a 14+ month window in one shot silently drops most of the
     # current season. Chunk by calendar year to stay well under the cap.
@@ -105,7 +107,7 @@ def fetch_yankees() -> list[dict]:
     raw_days = []
     for cs, ce in chunks:
         params = {
-            "teamId": YANKEES_TEAM_ID,
+            "teamId": team_id,
             "sportId": 1,
             "startDate": cs.isoformat(),
             "endDate": ce.isoformat(),
@@ -240,12 +242,13 @@ def fetch_knicks() -> list[dict]:
 
 def main() -> None:
     print("Building Yankees calendar...")
-    yankees = fetch_yankees()
-    write_calendar("yankees.ics", "Yankees", yankees)
+    write_calendar("yankees.ics", "Yankees", fetch_mlb(YANKEES_TEAM_ID))
+
+    print("Building Phillies calendar...")
+    write_calendar("phillies.ics", "Phillies", fetch_mlb(PHILLIES_TEAM_ID))
 
     print("Building Knicks calendar...")
-    knicks = fetch_knicks()
-    write_calendar("knicks.ics", "Knicks", knicks)
+    write_calendar("knicks.ics", "Knicks", fetch_knicks())
 
     # Simple landing page so the Pages root isn't a 404
     index = OUT_DIR / "index.html"
@@ -255,6 +258,7 @@ def main() -> None:
         "<p>Subscribe in your calendar app:</p>"
         "<ul>"
         '<li>Yankees: <code>yankees.ics</code></li>'
+        '<li>Phillies: <code>phillies.ics</code></li>'
         '<li>Knicks: <code>knicks.ics</code></li>'
         "</ul>"
     )
