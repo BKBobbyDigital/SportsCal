@@ -2,18 +2,15 @@
 
 Subscribable `.ics` calendars for the Yankees and Knicks.
 
-## Feeds
+## Available teams
 
-Once GitHub Pages is enabled, the feeds will be at:
+| Team | League | Subscribe (webcal) | Raw .ics |
+| --- | --- | --- | --- |
+| ⚾️ Yankees | MLB | `webcal://bkbobbydigital.github.io/SportsCal/yankees.ics` | [yankees.ics](https://bkbobbydigital.github.io/SportsCal/yankees.ics) |
+| ⚾️ Phillies | MLB | `webcal://bkbobbydigital.github.io/SportsCal/phillies.ics` | [phillies.ics](https://bkbobbydigital.github.io/SportsCal/phillies.ics) |
+| 🏀 Knicks | NBA | `webcal://bkbobbydigital.github.io/SportsCal/knicks.ics` | [knicks.ics](https://bkbobbydigital.github.io/SportsCal/knicks.ics) |
 
-- `https://<your-user>.github.io/SportsCal/yankees.ics`
-- `https://<your-user>.github.io/SportsCal/knicks.ics`
-
-Subscribe on iPhone/Mac by tapping (or pasting) the `webcal://` form, e.g.:
-
-```
-webcal://<your-user>.github.io/SportsCal/yankees.ics
-```
+Tap a `webcal://` link on iPhone or Mac to subscribe directly in Calendar.
 
 ## What's in each event
 
