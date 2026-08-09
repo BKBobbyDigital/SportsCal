@@ -121,14 +121,17 @@ def fetch_mlb(team_id: int) -> list[dict]:
     seen = set()
     for day in raw_days:
         for game in day.get("games", []):
+            # Skip stale entries first (before dedup), because the API returns the
+            # same gamePk twice for rescheduled games — a "Postponed" entry at the
+            # old date AND a "Scheduled" entry at the new date. If we dedup first,
+            # we keep the ghost postponed one and drop the real makeup game.
+            detailed = game.get("status", {}).get("detailedState", "")
+            if detailed in ("Cancelled", "Postponed"):
+                continue
             if game["gamePk"] in seen:
                 continue
             seen.add(game["gamePk"])
             game_pk = game["gamePk"]
-            status = game.get("status", {}).get("abstractGameState", "")
-            # Skip cancelled; postponed games stay (they'll be rescheduled w/ new gamePk)
-            if status == "Cancelled":
-                continue
 
             start_iso = game["gameDate"]  # already in UTC ISO8601 (...Z)
             start = dt.datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
