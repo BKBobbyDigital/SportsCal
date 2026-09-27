@@ -111,6 +111,9 @@ def fetch_mlb(team_id: int) -> list[dict]:
             "sportId": 1,
             "startDate": cs.isoformat(),
             "endDate": ce.isoformat(),
+            # Include postseason: R=regular, F=wild card, D=div series, L=LCS,
+            # W=World Series, S=spring training. Default omits F/D/L/W.
+            "gameType": "R,F,D,L,W,S",
             "hydrate": "venue(location)",
         }
         r = requests.get(url, params=params, timeout=30)
