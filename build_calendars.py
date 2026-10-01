@@ -64,16 +64,21 @@ def build_ics(cal_name: str, events: list[dict]) -> str:
     ]
     now_stamp = fmt_utc(dt.datetime.now(dt.timezone.utc))
     for ev in events:
-        lines += [
-            "BEGIN:VEVENT",
-            f"UID:{ev['uid']}",
-            f"DTSTAMP:{now_stamp}",
-            f"DTSTART:{fmt_utc(ev['start'])}",
-            f"DTEND:{fmt_utc(ev['end'])}",
-            f"SUMMARY:{ics_escape(ev['summary'])}",
-            f"LOCATION:{ics_escape(ev['location'])}",
-            "END:VEVENT",
-        ]
+        lines.append("BEGIN:VEVENT")
+        lines.append(f"UID:{ev['uid']}")
+        lines.append(f"DTSTAMP:{now_stamp}")
+        if ev.get("all_day"):
+            # All-day event (for TBD-time postseason games). ICS DATE values
+            # are inclusive-start, exclusive-end — DTEND is the day after.
+            day = ev["start"].date()
+            lines.append(f"DTSTART;VALUE=DATE:{day.strftime('%Y%m%d')}")
+            lines.append(f"DTEND;VALUE=DATE:{(day + dt.timedelta(days=1)).strftime('%Y%m%d')}")
+        else:
+            lines.append(f"DTSTART:{fmt_utc(ev['start'])}")
+            lines.append(f"DTEND:{fmt_utc(ev['end'])}")
+        lines.append(f"SUMMARY:{ics_escape(ev['summary'])}")
+        lines.append(f"LOCATION:{ics_escape(ev['location'])}")
+        lines.append("END:VEVENT")
     lines.append("END:VCALENDAR")
     # ICS spec wants CRLF line endings
     return "\r\n".join(lines) + "\r\n"
@@ -140,10 +145,24 @@ def fetch_mlb(team_id: int) -> list[dict]:
             start = dt.datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
             end = start + MLB_DURATION
 
+            # Postseason games often have startTimeTBD=True with a placeholder
+            # UTC timestamp (e.g. T07:33:00Z = 3:33am ET, which is wrong). For
+            # those, show an all-day event on the official calendar date — the
+            # daily rebuild will swap to a real time once MLB announces it.
+            tbd = game.get("status", {}).get("startTimeTBD", False)
+            all_day = False
+            if tbd:
+                official = game.get("officialDate")
+                if official:
+                    start = dt.datetime.fromisoformat(official).replace(tzinfo=dt.timezone.utc)
+                all_day = True
+
             home = game["teams"]["home"]["team"]["name"]
             away = game["teams"]["away"]["team"]["name"]
-            # Title format: "⚾️ Away at Home"
+            # Title format: "⚾️ Away at Home" (prefix TBD games so it's obvious)
             summary = f"{BASEBALL} {away} at {home}"
+            if all_day:
+                summary = f"{BASEBALL} {away} at {home} (time TBD)"
 
             venue = game.get("venue", {})
             venue_name = venue.get("name", "")
@@ -164,6 +183,7 @@ def fetch_mlb(team_id: int) -> list[dict]:
                 "end": end,
                 "summary": summary,
                 "location": location,
+                "all_day": all_day,
             })
     return events
 
